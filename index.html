@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Workout">
+  <title>Workout Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .title { font-size: 28px; font-weight: bold; color: #1f2937; }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-success { background: #10b981; color: white; }
+    .day-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; }
+    .day-tab {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .day-tab.active { background: #2563eb; color: white; }
+    .controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    input[type="date"] {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .message { color: #10b981; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f3f4f6; }
+    th { padding: 12px 8px; font-weight: 600; color: #374151; text-align: center; font-size: 14px; }
+    th:first-child { text-align: left; }
+    td { padding: 12px 8px; border-top: 1px solid #e5e7eb; text-align: center; }
+    td:first-child { text-align: left; font-weight: 500; color: #1f2937; }
+    input[type="number"] {
+      width: 60px;
+      padding: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .history-item {
+      padding: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-item:hover { background: #f9fafb; }
+    .hidden { display: none; }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+    }
+    .table-wrapper { overflow-x: auto; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div>
+          <div class="title">💪 Workout Tracker</div>
+        </div>
+        <button class="btn btn-secondary" onclick="toggleHistory()">📜 History</button>
+      </div>
+
+      <div class="day-tabs">
+        <button class="day-tab active" onclick="selectDay('Day 1')">Day 1</button>
+        <button class="day-tab" onclick="selectDay('Day 2')">Day 2</button>
+        <button class="day-tab" onclick="selectDay('Day 3')">Day 3</button>
+        <button class="day-tab" onclick="selectDay('Day 4')">Day 4</button>
+      </div>
+
+      <div class="controls">
+        <input type="date" id="workoutDate">
+        <button class="btn btn-success" onclick="saveWorkout()">💾 Save Workout</button>
+        <span id="saveMessage" class="message"></span>
+      </div>
+    </div>
+
+    <div id="historyPanel" class="card hidden">
+      <div class="header">
+        <h2 style="font-size: 20px; font-weight: bold;">Workout History</h2>
+        <button class="close-btn" onclick="toggleHistory()">✕</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrapper">
+        <table id="workoutTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const workoutPlan = {
+      'Day 1': [
+        { name: 'Deadlifts', targetReps: [8, 8, 8] },
+        { name: 'T-Bar Rows', targetReps: [8, 8, 8] },
+        { name: 'Hip Thrusts', targetReps: [8, 8, 8] },
+        { name: 'Face Pulls', targetReps: [8, 8, 8] },
+        { name: 'Skull Crushers', targetReps: [8, 8, 8] },
+        { name: 'Shrugs', targetReps: [10, 10, 10] },
+        { name: 'Supermans', targetReps: [15, 15, 15] }
+      ],
+      'Day 2': [
+        { name: 'Front Squats', targetReps: [8, 8, 8] },
+        { name: 'Bench Press', targetReps: [8, 8, 8] },
+        { name: 'Seated Shoulder Press', targetReps: [8, 8, 8] },
+        { name: 'Alt Front Raises', targetReps: [10, 8, 8] },
+        { name: 'Barbell Curls', targetReps: [10, 8, 8] },
+        { name: 'A.T. Raises', targetReps: [10, 10, 10] },
+        { name: 'Accordian Crunches', targetReps: [15, 15, 15] }
+      ],
+      'Day 3': [
+        { name: 'Pull-Ups', targetReps: [8, 8, 8] },
+        { name: 'Romanian Deadlifts', targetReps: [8, 8, 8] },
+        { name: 'Shoulder Extensions', targetReps: [10, 10, 10] },
+        { name: 'French Press', targetReps: [10, 10, 10] },
+        { name: 'Shoulder Retractions', targetReps: [10, 10, 10] },
+        { name: 'Standing Calf Raises', targetReps: [10, 10, 10] },
+        { name: 'Supermans', targetReps: [15, 15, 15] }
+      ],
+      'Day 4': [
+        { name: 'Incline Bench Press', targetReps: [8, 8, 8] },
+        { name: 'Sissy Squats/Leg Extension', targetReps: [8, 8, 8] },
+        { name: 'S.L. Standing D.B. Knee Raises', targetReps: [10, 10, 10] },
+        { name: 'Underhand D.B. Flys', targetReps: [10, 10, 10] },
+        { name: 'Alt. D.B. Curls', targetReps: [10, 10, 10] },
+        { name: 'A.T. Raises', targetReps: [10, 10, 10] },
+        { name: 'Roll Outs', targetReps: [15, 15, 15] }
+      ]
+    };
+
+    let currentDay = 'Day 1';
+    let workoutData = initData();
+
+    function initData() {
+      const saved = localStorage.getItem('workoutData');
+      if (saved) return JSON.parse(saved);
+      
+      const data = {};
+      for (let day in workoutPlan) {
+        data[day] = workoutPlan[day].map(ex => ({
+          ...ex,
+          sets: [
+            { reps: '', weight: '' },
+            { reps: '', weight: '' },
+            { reps: '', weight: '' }
+          ]
+        }));
+      }
+      return data;
+    }
+
+    function saveData() {
+      localStorage.setItem('workoutData', JSON.stringify(workoutData));
+    }
+
+    function selectDay(day) {
+      currentDay = day;
+      document.querySelectorAll('.day-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.textContent === day) tab.classList.add('active');
+      });
+      renderTable();
+    }
+
+    function reloadData() {
+      const saved = localStorage.getItem('workoutData');
+      if (saved) {
+        workoutData = JSON.parse(saved);
+      }
+    }
+
+    function updateSet(exIdx, setIdx, field, value) {
+      workoutData[currentDay][exIdx].sets[setIdx][field] = value;
+      saveData();
+    }
+
+    function renderTable() {
+      const exercises = workoutData[currentDay];
+      let html = `
+        <thead>
+          <tr>
+            <th>Exercise</th>
+            <th colspan="3">Set 1</th>
+            <th colspan="3">Set 2</th>
+            <th colspan="3">Set 3</th>
+          </tr>
+          <tr style="font-size: 12px; color: #6b7280;">
+            <th></th>
+            <th>T.R.</th><th>Rep</th><th>Weight</th>
+            <th>T.R.</th><th>Rep</th><th>Weight</th>
+            <th>T.R.</th><th>Rep</th><th>Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+      
+      exercises.forEach((ex, exIdx) => {
+        html += `<tr><td>${ex.name}</td>`;
+        for (let i = 0; i < 3; i++) {
+          const repsValue = ex.sets[i].reps || '';
+          const weightValue = ex.sets[i].weight || '';
+          html += `
+            <td style="font-size: 12px; color: #6b7280;">${ex.targetReps[i]}</td>
+            <td><input type="number" inputmode="numeric" value="${repsValue}" 
+                oninput="updateSet(${exIdx}, ${i}, 'reps', this.value)" placeholder="-"></td>
+            <td><input type="number" inputmode="decimal" value="${weightValue}" 
+                oninput="updateSet(${exIdx}, ${i}, 'weight', this.value)" placeholder="-"></td>
+          `;
+        }
+        html += '</tr>';
+      });
+      
+      html += '</tbody>';
+      document.getElementById('workoutTable').innerHTML = html;
+    }
+
+    function saveWorkout() {
+      const date = document.getElementById('workoutDate').value;
+      if (!date) {
+        alert('Please select a date');
+        return;
+      }
+
+      const workout = {
+        date: date,
+        day: currentDay,
+        exercises: JSON.parse(JSON.stringify(workoutData[currentDay]))
+      };
+
+      let history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+      history = history.filter(w => !(w.date === date && w.day === currentDay));
+      history.push(workout);
+      history.sort((a, b) => new Date(b.date) - new Date(a.date));
+      localStorage.setItem('workoutHistory', JSON.stringify(history));
+
+      const msg = document.getElementById('saveMessage');
+      msg.textContent = 'Workout saved!';
+      setTimeout(() => msg.textContent = '', 3000);
+    }
+
+    function toggleHistory() {
+      const panel = document.getElementById('historyPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        renderHistory();
+      }
+    }
+
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+      const list = document.getElementById('historyList');
+      
+      if (history.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">No workout history yet</p>';
+        return;
+      }
+
+      list.innerHTML = history.map((w, idx) => `
+        <div class="history-item" onclick="loadWorkout(${idx})">
+          <div>
+            <strong>${w.day}</strong>
+            <span style="color: #6b7280; margin-left: 12px;">${w.date}</span>
+          </div>
+          <span style="color: #6b7280; font-size: 14px;">
+            ${w.exercises.filter(e => e.sets.some(s => s.reps || s.weight)).length} exercises
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function loadWorkout(idx) {
+      const history = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+      const workout = history[idx];
+      
+      document.getElementById('workoutDate').value = workout.date;
+      workoutData[workout.day] = JSON.parse(JSON.stringify(workout.exercises));
+      saveData();
+      selectDay(workout.day);
+      toggleHistory();
+    }
+
+    // Initialize
+    window.addEventListener('pageshow', function(event) {
+      reloadData();
+      renderTable();
+    });
+    
+    document.getElementById('workoutDate').value = new Date().toISOString().split('T')[0];
+    renderTable();
+  </script>
+</body>
+</html>
